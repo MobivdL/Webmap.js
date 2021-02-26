@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<!--
+Link to workshop:
+https://workshops.this-way.nl/workshop/leaflet/
+-->
+
+ <html>
+	<head>
+		<link rel="stylesheet" href="main.css"/>
+		<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+		<title> My Leaflet map </title>
+	</head>
+	
+	<body>
+		<H1>Example</H1>
+		<div id="map"></div>
+		<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.5.0/proj4.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/proj4leaflet/1.0.2/proj4leaflet.js"></script>
+		
+		<script>
+			//Create coordinate system
+			const RDnew = new L.Proj.CRS( 'EPSG:28992','+proj=sterea +lat_0=52.15616055555555 +lon_0=5.38763888888889 +k=0.9999079 +x_0=155000 +y_0=463000 +ellps=bessel +units=m +towgs84=565.2369,50.0087,465.658,-0.406857330322398,0.350732676542563,-1.8703473836068,4.0812 +no_defs',
+				{
+					resolutions: [3440.640, 1720.320, 860.160, 430.080, 215.040, 107.520, 53.760, 26.880, 13.440, 6.720, 3.360, 1.680, 0.840, 0.420, 0.210],
+					bounds: L.bounds([-285401.92, 22598.08], [595401.9199999999, 903401.9199999999]),
+					origin: [-285401.92, 22598.08]
+				}
+			);
+			
+			//Create geoJSON polygon
+			const geoJSONPolygon = {
+			  "type": "FeatureCollection",
+			  "features": [
+				{
+				  "type": "Feature",
+				  "properties": {},
+				  "geometry": {
+					"type": "Polygon",
+					"coordinates": [
+					  [
+						[
+						  5.664578676223755,
+						  51.982032190214696
+						],
+						[
+						  5.664782524108886,
+						  51.98082291318533
+						],
+						[
+						  5.669739246368408,
+						  51.98044624645918
+						],
+						[
+						  5.674020051956177,
+						  51.98178769421335
+						],
+						[
+						  5.67193865776062,
+						  51.98425902479514
+						],
+						[
+						  5.664578676223755,
+						  51.982032190214696
+						]
+					  ]
+					]
+				  }
+				}
+			  ]
+			}
+			
+			//Create map variable
+			const map = L.map('map', {
+				crs: RDnew,
+				zoom: 9,
+				center: [51.972, 5.665]
+			});
+			
+			//Create background map
+			const pdokachtergrondkaart = new L.TileLayer('http://geodata.nationaalgeoregister.nl/tms/1.0.0/brtachtergrondkaart/{z}/{x}/{y}.png', {
+				minZoom: 0,
+				maxZoom: 13,
+				tms: true,
+				attribution: 'Map data: <a href="http://www.kadaster.nl">Kadaster</a>'
+			});
+			pdokachtergrondkaart.addTo(map);
+			
+			//Create markers
+			let markerOrion = L.marker([51.98514, 5.66647]).addTo(map); 	//Orion
+			let markerForum = L.marker([51.98531, 5.66361]).addTo(map); 	//Forum
+			let markerHome = L.marker([51.96940, 5.68159]).addTo(map);		//Home
+			let markerArgo = L.marker([51.95735, 5.64824]).addTo(map);		//'vo
+			let markerIlayda = L.marker([51.96464, 5.66195]).addTo(map);	//Ilayda
+			
+			//Add pop-ups to markers
+			let popupForum = "This is the Forum building";
+			let popupIlayda = "This is where you get your calories";
+			markerForum.bindPopup(popupForum);
+			markerIlayda.bindPopup(popupIlayda);
+			
+			//Create a circle
+			let circle = L.circle([51.96563, 5.66365], 400, {
+				color: 'red',
+				fillColor: '#f03',
+				fillOpacity: 0.1})
+				.addTo(map);
+			
+			//Create a polygon
+			let polygon = L.polygon(
+			  [[
+				[51.98514, 5.66647],
+				[51.98531, 5.66361],
+				[51.95735, 5.64824],
+				[51.96464, 5.66195],
+				[51.96940, 5.68159]
+			  ]]).addTo(map);
+			
+			//Create a geoJSON marker style
+			function geojsonMarkerFunction(feature) {
+				return {
+				radius: feature.properties.aantal_partijen*2,
+				fillColor: "#ff7800",
+				color: "#000",
+				weight: 1,
+				opacity: 1,
+				fillOpacity: 0.8
+				}
+			};
+			
+			//Fetch geoJSON data
+			//I did not manage to create a local server, so i just use the online data
+			fetch("https://raw.githubusercontent.com/NieneB/webmapping_for_beginners_v2/master/leaflet-part-4/trafic_accidents_wageningen_2017.geojson")
+				.then(response => response.json())
+				.then(data => {
+					geojson.addData(data);
+				})
+				.catch(error => alert("Error in finding the data: " + error))
+			
+			//Add geoJSON accidents layer
+			const geojson = L.geoJson(null, {
+				pointToLayer: function (feature, latlng) {
+					return L.circleMarker(latlng, geojsonMarkerFunction(feature));
+				}
+			}).addTo(map);
+			
+			//Add geoJSON polygon layer
+			L.geoJSON(geoJSONPolygon).addTo(map);
+			
+			//Create a WMS layer for neighbourhoods
+			const layerCBS = L.tileLayer.wms('https://geodata.nationaalgeoregister.nl/wijkenbuurten2018/wms', {
+				'layers': 'cbs_buurten_2018',
+				'styles': 'wijkenbuurten2018:wijkenbuurten_thema_buurten_default',
+				'srs': 'EPSG:28992',
+				'format': 'image/png',
+				'transparent': true
+			}).addTo(map);
+			
+		</script>
+	</body>
+	
+</html>
